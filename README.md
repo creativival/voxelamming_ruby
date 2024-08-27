@@ -26,27 +26,27 @@ gem install voxelamming
 require 'voxelamming'
 
 room_name = '1000'
-build_box = Voxelamming::BuildBox.new(room_name)
+vox = Voxelamming::VoxelammingManager.new(room_name)
 
-build_box.set_box_size(0.5)
-build_box.set_build_interval(0.01)
+vox.set_box_size(0.5)
+vox.set_build_interval(0.01)
 
 for i in 0...100
-  build_box.create_box(-1, i, 0, r: 0, g: 1, b: 1)
-  build_box.create_box(0, i, 0, r: 1, g: 0, b: 0)
-  build_box.create_box(1, i, 0, r: 1, g: 1, b: 0)
-  build_box.create_box(2, i, 0, r: 0, g: 1, b: 1)
+  vox.create_box(-1, i, 0, r: 0, g: 1, b: 1)
+  vox.create_box(0, i, 0, r: 1, g: 0, b: 0)
+  vox.create_box(1, i, 0, r: 1, g: 1, b: 0)
+  vox.create_box(2, i, 0, r: 0, g: 1, b: 1)
 end
 
 for i in 0...50
-  build_box.remove_box(0, i * 2, 0)
-  build_box.remove_box(1, i * 2 + 1, 0)
+  vox.remove_box(0, i * 2, 0)
+  vox.remove_box(1, i * 2 + 1, 0)
 end
 
-build_box.send_data
+vox.send_data
 ```
 
-This code snippet demonstrates a simple example where a red voxel is created at a specific location. You can use various functions provided by the `BuildBox` class to build more complex models.
+This code snippet demonstrates a simple example where a red voxel is created at a specific location. You can use various functions provided by the `VoxelammingManager` class to build more complex models.
 
 #### Method description
 
@@ -75,6 +75,12 @@ This code snippet demonstrates a simple example where a red voxel is created at 
 | `frame_out()` | Ends recording a frame. | |
 | `set_frame_fps(fps)` | Sets the frame rate (default: 2). | `fps`: Frame rate (int) |
 | `set_frame_repeats(repeats)` | Sets the number of frame repetitions (default: 10). | `repeats`: Number of repetitions (int) |
+| Game Method Name                                                                              | Description | Arguments                                                                                                                                                            |
+| `set_game_screen(width, height, angle=90, r=1, g=1, b=0, alpha=0.5)`                | Sets the game screen size. | `width`, `height`: screen size (float), `angle`: angle (float), `r`, `g`, `b`, `alpha`: color (float, 0-1)                                                            |
+| `set_game_score(score)`                                                                  | Sets the game score. | `score`: game score (int)                                                                                                                                            |
+| `send_game_over()`                                                                       | Triggers game over. |                                                                                                                                                                     |
+| `create_sprite(sprite_name, color_list, x, y, direction=90, scale=1, visible=True)`      | Creates a sprite. | `sprite_name`: sprite name (string), `color_list`: dot color data (string), `x`, `y`: position (float), `direction`: angle (float), `scale`: scale (float), `visible`: visibility (boolean) |
+| `move_sprite(sprite_name, x, y, direction=90, scale=1, visible=True)`                    | Moves a sprite. | `sprite_name`: sprite name (string), `x`, `y`: position (float), `direction`: angle (float), `scale`: scale (float), `visible`: visibility (boolean)                                  |
 
 ## Development
 

@@ -17,7 +17,7 @@ module Voxelamming
   end
 
   # Main process
-  class BuildBox
+  class VoxelammingManager
     @@texture_names = ["grass", "stone", "dirt", "planks", "bricks"]
     @@model_names = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Sun",
                      "Moon", "ToyBiplane", "ToyCar", "Drummer", "Robot", "ToyRocket", "RocketToy1", "RocketToy2", "Skull"]
@@ -33,11 +33,15 @@ module Voxelamming
       @animation = [0, 0, 0, 0, 0, 0, 1, 0]
       @boxes = []
       @frames = []
-      @sentence = []
+      @sentences = []
       @lights = []
       @commands = []
       @models = []
       @model_moves = []
+      @sprites = []
+      @sprite_moves = []
+      @game_score = -1
+      @game_screen = []  # width, height, angle=90, red=1, green=1, blue=1, alpha=0.5
       @size = 1
       @shape = 'box'
       @is_metallic = 0
@@ -46,6 +50,9 @@ module Voxelamming
       @build_interval = 0.01
       @is_framing = false
       @frame_id = 0
+      @websocket = nil
+      @last_sent_time = nil
+      @timer = nil
     end
 
     def clear_data
@@ -58,7 +65,11 @@ module Voxelamming
       @animation = [0, 0, 0, 0, 0, 0, 1, 0]
       @boxes = []
       @frames = []
-      @sentence = []
+      @sentences = []
+      @sprites = []
+      @sprite_moves = []
+      @game_score = -1
+      @game_screen = []  # width, height, angle=90, red=1, green=1, blue=1, alpha=0.5
       @lights = []
       @commands = []
       @models = []
@@ -119,8 +130,8 @@ module Voxelamming
         x, y, z = round_numbers([x, y, z])
 
         # Compute the rotation after transform
-        translate_rotation_matrix = get_rotation_matrix(-pitch, -yaw, -roll)
-        rotate_matrix = matrix_multiply(translate_rotation_matrix, base_rotation_matrix)
+        transform_rotation_matrix = get_rotation_matrix(-pitch, -yaw, -roll)
+        rotate_matrix = matrix_multiply(transform_rotation_matrix, base_rotation_matrix)
         @matrix_transform = [x, y, z, *rotate_matrix[0], *rotate_matrix[1], *rotate_matrix[2]]
       else
         x, y, z = round_numbers([x, y, z])
@@ -196,11 +207,11 @@ module Voxelamming
       @build_interval = interval
     end
 
-    def write_sentence(sentence, x, y, z, r: 1, g: 1, b: 1, alpha: 1)
+    def write_sentence(sentence, x, y, z, r: 1, g: 1, b: 1, alpha: 1, font_size: 8, is_fixed_width: false)
       x, y, z = round_numbers([x, y, z]).map(&:to_s)
       r, g, b, alpha = round_two_decimals([r, g, b, alpha])
-      r, g, b, alpha =  [r, g, b, alpha].map(&:floor).map(&:to_s)
-      @sentence = [sentence, x, y, z, r, g, b, alpha]
+      r, g, b, alpha, font_size =  [r, g, b, alpha, font_size].map(&:floor).map(&:to_s)
+      @sentences << [sentence, x, y, z, r, g, b, alpha, font_size, is_fixed_width ? "1" : "0"]
     end
 
     def set_light(x, y, z, r: 1, g: 1, b: 1, alpha: 1, intensity: 1000, interval: 1, light_type: 'point')
@@ -308,6 +319,65 @@ module Voxelamming
       @model_moves << [entity_name, x, y, z, pitch, yaw, roll, scale]
     end
 
+    # Game API
+
+    def set_game_screen(width, height, angle = 90, r = 1, g = 1, b = 0, alpha = 0.5)
+      @game_screen = [width, height, angle, r, g, b, alpha]
+    end
+
+    def set_game_score(score)
+      @game_score = score.to_f
+    end
+
+    def send_game_over
+      @commands << 'gameOver'
+    end
+
+    def set_rotation_style(sprite_name, rotation_style = 'all around')
+      @rotation_styles[sprite_name] = rotation_style
+    end
+
+    def create_sprite(sprite_name, color_list, x, y, direction = 0, scale = 1, visible = true)
+      # 新しいスプライトデータを配列に追加
+      x, y, direction = round_numbers([x, y, direction])
+      x, y, direction, scale = [x, y, direction, scale].map(&:to_s)
+      @sprites << [sprite_name, color_list, x, y, direction, scale, visible ? '1' : '0']
+    end
+
+    def move_sprite(sprite_name, x, y, direction = 0, scale = 1, visible = true)
+      # x, y, directionを丸める
+      x, y, direction = round_numbers([x, y, direction])
+      x, y, direction, scale = [x, y, direction, scale].map(&:to_s)
+
+      # rotation_styleを取得
+      if @rotation_styles.has_key?(sprite_name)
+        rotation_style = @rotation_styles[sprite_name]
+
+        # rotation_styleが変更された場合、新しいスプライトデータを配列に追加
+        case rotation_style
+        when 'left-right'
+          direction_mod = direction.to_i % 360 # 常に0から359の範囲で処理（常に正の数になる）
+          if direction_mod > 90 && direction_mod < 270
+            direction = '-180' # -180は左右反転するようにボクセラミング側で実装されている
+          else
+            direction = '0'
+          end
+        when "don't rotate"
+          direction = '0'
+        else
+          direction = direction.to_s
+        end
+      else
+        # rotation_styleが設定されていない場合、そのままの値を使う
+        direction = direction.to_s
+      end
+
+      # sprites配列から同じスプライト名の要素を削除
+      @sprite_moves.reject! { |sprite_info| sprite_info[0] == sprite_name }
+
+      # 新しいスプライトデータを配列に追加
+      @sprite_moves << [sprite_name, x, y, direction, scale, visible ? '1' : '0']
+    end
 
     def send_data(name: '')
       puts 'send_data'
@@ -319,11 +389,15 @@ module Voxelamming
         "animation": @animation,
         "boxes": @boxes,
         "frames": @frames,
-        "sentence": @sentence,
+        "sentences": @sentences,
         "lights": @lights,
         "commands": @commands,
         "models": @models,
         "modelMoves": @model_moves,
+        "sprites": @sprites,
+        "spriteMoves": @sprite_moves,
+        "gameScore": @game_score,
+        "gameScreen": @game_screen,
         "size": @size,
         "shape": @shape,
         "interval": @build_interval,
@@ -335,32 +409,58 @@ module Voxelamming
       }.to_json
 
       EM.run do
-        ws = Faye::WebSocket::Client.new('wss://websocket.voxelamming.com')
+        if @websocket.nil?
+          @websocket = Faye::WebSocket::Client.new('wss://websocket.voxelamming.com')
 
-        ws.on :open do |_event|
-          p [:open]
-          puts 'WebSocket connection open'
-          ws.send(@room_name)
-          puts "Joined room: #{@room_name}"
-          ws.send(data_to_send)
-          puts data_to_send
-          puts 'Sent data to server'
+          @websocket.on :open do |_event|
+            p [:open]
+            puts 'WebSocket connection open'
+            @websocket.send(@room_name)
+            puts "Joined room: #{@room_name}"
+            send_data_to_server(data_to_send)
+          end
 
-          EM.add_timer(1) do
-            ws.close
+          @websocket.on :error do |event|
+            puts "WebSocket error: #{event.message}"
             EM.stop
           end
-        end
 
-        ws.on :error do |event|
-          puts "WebSocket error: #{event.message}"
-          EM.stop
+          @websocket.on :close do |_event|
+            puts 'WebSocket connection closed'
+            EM.stop
+          end
+        else
+          send_data_to_server(data_to_send)
         end
+      end
+    end
 
-        ws.on :close do |_event|
-          puts 'WebSocket connection closed'
-          EM.stop
+    def send_data_to_server(data)
+      if @websocket && @websocket.ready_state == Faye::WebSocket::API::OPEN
+        @websocket.send(data)
+        puts 'Sent data to server'
+        @last_sent_time = Time.now
+
+        reset_close_timer
+      end
+    end
+
+    def reset_close_timer
+      EM.cancel_timer(@timer) if @timer
+
+      @timer = EM.add_timer(2) do
+        if Time.now - @last_sent_time >= 2
+          close_connection
         end
+      end
+    end
+
+    def close_connection
+      if @websocket
+        puts 'Closing WebSocket connection.'
+        @websocket.close
+        @websocket = nil
+        EM.stop
       end
     end
 
@@ -381,8 +481,8 @@ module Voxelamming
   class Turtle
     include Math
 
-    def initialize(build_box)
-      @build_box = build_box
+    def initialize(voxelamming_instance)
+      @vox = voxelamming_instance
       @x = 0
       @y = 0
       @z = 0
@@ -400,7 +500,7 @@ module Voxelamming
       x, y, z = x.round(3), y.round(3), z.round(3)
 
       if @drawable
-        @build_box.draw_line(@x, @y, @z, x, y, z, r: @color[0], g: @color[1], b: @color[2])
+        @vox.draw_line(@x, @y, @z, x, y, z, r: @color[0], g: @color[1], b: @color[2])
       end
 
       @x = x
