@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Voxelamming</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 2rem auto;
+            max-width: 800px;
+            padding: 0 1rem;
+        }
+
+        h1, h2, h3 {
+            margin-top: 1.5rem;
+        }
+
+        a {
+            color: #0645ad;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        pre {
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
+            overflow-x: auto;
+            padding: 1rem;
+        }
+
+        code {
+            font-family: monospace;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.5rem;
+        }
+
+        th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+
+
+
+<h1>Voxelamming</h1>
+<p>This Ruby package converts Python code into JSON format and sends it to the Voxelamming app using WebSockets, allowing users to create 3D voxel models by writing Ruby scripts.</p>
+<h2>What's Voxelamming?</h2>
+<p align="center"><img src="https://creativival.github.io/voxelamming/image/voxelamming_icon.png" alt="Voxelamming Logo" width="200"/></p>
+<p>Voxelamming is an AR programming learning app. Even programming beginners can learn programming visually and enjoyably. Voxelamming supports iPhones and iPads with iOS 16 or later, and Apple Vision Pro.</p>
+<h2>Resources</h2>
+<ul>
+    <li><strong>Homepage:</strong> https://creativival.github.io/voxelamming/index.en</li>
+    <li><strong>Samples:</strong> https://github.com/creativival/voxelamming/tree/main/sample/ruby</li>
+</ul>
+<h2>Installation</h2>
+<pre><code class="bash">gem install voxelamming
+</code></pre>
+<h2>Usage</h2>
+<pre><code class="ruby">require 'voxelamming'
+
+room_name = '1000'
+vox = Voxelamming::VoxelammingManager.new(room_name)
+
+vox.set_box_size(0.5)
+vox.set_build_interval(0.01)
+
+for i in 0...100
+  vox.create_box(-1, i, 0, r: 0, g: 1, b: 1)
+  vox.create_box(0, i, 0, r: 1, g: 0, b: 0)
+  vox.create_box(1, i, 0, r: 1, g: 1, b: 0)
+  vox.create_box(2, i, 0, r: 0, g: 1, b: 1)
+end
+
+for i in 0...50
+  vox.remove_box(0, i * 2, 0)
+  vox.remove_box(1, i * 2 + 1, 0)
+end
+
+vox.send_data
+</code></pre>
+<p>This code snippet demonstrates a simple example where a red voxel is created at a specific location. You can use various functions provided by the <code>VoxelammingManager</code> class to build more complex models.</p>
+<h4>Method description</h4>
+<table>
+    <thead>
+    <tr><th> Method name </th><th> Description </th><th> Arguments </th></tr>
+    </thead>
+    <tbody>
+    <tr><td> <code>set_room_name(room_name)</code> </td><td> Sets the room name for communicating with the device. </td><td> <code>room_name</code>: Room name (string) </td></tr>
+    <tr><td> <code>set_box_size(size)</code> </td><td> Sets the size of the voxel (default: 1.0). </td><td> <code>size</code>: Size (float) </td></tr>
+    <tr><td> <code>set_build_interval(interval)</code> </td><td> Sets the placement interval of the voxels (default: 0.01 seconds). </td><td> <code>interval</code>: Interval (float) </td></tr>
+    <tr><td> <code>change_shape(shape)</code> </td><td> Changes the shape of the voxel. </td><td> <code>shape</code>: Shape (&quot;box&quot;, &quot;square&quot;, &quot;plane&quot;) </td></tr>
+    <tr><td> <code>change_material(is_metallic, roughness)</code> </td><td> Changes the material of the voxel. </td><td> <code>is_metallic</code>: Whether to make it metallic (boolean), <code>roughness</code>: Roughness (float) </td></tr>
+    <tr><td> <code>create_box(x, y, z, r, g, b, alpha)</code> </td><td> Places a voxel. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Position (float), <code>r</code>, <code>g</code>, <code>b</code>, <code>alpha</code>: Color (float, 0-1) </td></tr>
+    <tr><td> <code>create_box(x, y, z, texture)</code> </td><td> Places a voxel with texture. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Position (float), <code>texture</code>: Texture name (string) </td></tr>
+    <tr><td> <code>remove_box(x, y, z)</code> </td><td> Removes a voxel. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Position (float) </td></tr>
+    <tr><td> <code>write_sentence(sentence, x, y, z, r, g, b, alpha)</code> </td><td> Draws a string with voxels. </td><td> <code>sentence</code>: String (string), <code>x</code>, <code>y</code>, <code>z</code>: Position (float), <code>r</code>, <code>g</code>, <code>b</code>, <code>alpha</code>: Color (float, 0-1) </td></tr>
+    <tr><td> <code>set_light(x, y, z, r, g, b, alpha, intensity, interval, light_type)</code> </td><td> Places a light. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Position (float), <code>r</code>, <code>g</code>, <code>b</code>, <code>alpha</code>: Color (float, 0-1), <code>intensity</code>: Intensity (float), <code>interval</code>: Blinking interval (float), <code>light_type</code>: Type of light (&quot;point&quot;, &quot;spot&quot;, &quot;directional&quot;) </td></tr>
+    <tr><td> <code>set_command(command)</code> </td><td> Executes a command. </td><td> <code>command</code>: Command (&quot;axis&quot;, &quot;japaneseCastle&quot;, &quot;float&quot;, &quot;liteRender&quot;) </td></tr>
+    <tr><td> <code>draw_line(x1, y1, z1, x2, y2, z2, r, g, b, alpha)</code> </td><td> Draws a line between two points. </td><td> <code>x1</code>, <code>y1</code>, <code>z1</code>: Starting point (float), <code>x2</code>, <code>y2</code>, <code>z2</code>: Ending point (float), <code>r</code>, <code>g</code>, <code>b</code>, <code>alpha</code>: Color (float, 0-1) </td></tr>
+    <tr><td> <code>send_data(name)</code> </td><td> Sends voxel data to the device; if the name argument is set, the voxel data can be stored and reproduced as history. </td><td> </td></tr>
+    <tr><td> <code>clear_data()</code> </td><td> Initializes voxel data. </td><td> </td></tr>
+    <tr><td> <code>transform(x, y, z, pitch, yaw, roll)</code> </td><td> Moves and rotates the coordinate system of the voxel. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Translation amount (float), <code>pitch</code>, <code>yaw</code>, <code>roll</code>: Rotation amount (float) </td></tr>
+    <tr><td> <code>animate(x, y, z, pitch, yaw, roll, scale, interval)</code> </td><td> Animates a voxel. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Translation amount (float), <code>pitch</code>, <code>yaw</code>, <code>roll</code>: Rotation amount (float), <code>scale</code>: Scale (float), <code>interval</code>: Interval (float) </td></tr>
+    <tr><td> <code>animate_global(x, y, z, pitch, yaw, roll, scale, interval)</code> </td><td> Animates all voxels. </td><td> <code>x</code>, <code>y</code>, <code>z</code>: Translation amount (float), <code>pitch</code>, <code>yaw</code>, <code>roll</code>: Rotation amount (float), <code>scale</code>: Scale (float), <code>interval</code>: Interval (float) </td></tr>
+    <tr><td> <code>push_matrix()</code> </td><td> Saves the current coordinate system to the stack. </td><td> </td></tr>
+    <tr><td> <code>pop_matrix()</code> </td><td> Restores the coordinate system from the stack. </td><td> </td></tr>
+    <tr><td> <code>frame_in()</code> </td><td> Starts recording a frame. </td><td> </td></tr>
+    <tr><td> <code>frame_out()</code> </td><td> Ends recording a frame. </td><td> </td></tr>
+    <tr><td> <code>set_frame_fps(fps)</code> </td><td> Sets the frame rate (default: 2). </td><td> <code>fps</code>: Frame rate (int) </td></tr>
+    <tr><td> <code>set_frame_repeats(repeats)</code> </td><td> Sets the number of frame repetitions (default: 10). </td><td> <code>repeats</code>: Number of repetitions (int) </td></tr>
+    <tr><td> Game Method Name                                                                              </td><td> Description </td><td> Arguments                                                                                                                                                            </td></tr>
+    <tr><td> <code>set_game_screen(width, height, angle=90, r=1, g=1, b=0, alpha=0.5)</code>                </td><td> Sets the game screen size. </td><td> <code>width</code>, <code>height</code>: screen size (float), <code>angle</code>: angle (float), <code>r</code>, <code>g</code>, <code>b</code>, <code>alpha</code>: color (float, 0-1)                                                            </td></tr>
+    <tr><td> <code>set_game_score(score)</code>                                                                  </td><td> Sets the game score. </td><td> <code>score</code>: game score (int)                                                                                                                                            </td></tr>
+    <tr><td> <code>send_game_over()</code>                                                                       </td><td> Triggers game over. </td><td>                                                                                                                                                                     </td></tr>
+    <tr><td> <code>create_sprite(sprite_name, color_list, x, y, direction=90, scale=1, visible=True)</code>      </td><td> Creates a sprite. </td><td> <code>sprite_name</code>: sprite name (string), <code>color_list</code>: dot color data (string), <code>x</code>, <code>y</code>: position (float), <code>direction</code>: angle (float), <code>scale</code>: scale (float), <code>visible</code>: visibility (boolean) </td></tr>
+    <tr><td> <code>move_sprite(sprite_name, x, y, direction=90, scale=1, visible=True)</code>                    </td><td> Moves a sprite. </td><td> <code>sprite_name</code>: sprite name (string), <code>x</code>, <code>y</code>: position (float), <code>direction</code>: angle (float), <code>scale</code>: scale (float), <code>visible</code>: visibility (boolean)                                  </td></tr>
+    </tbody>
+</table>
+<h2>Development</h2>
+<p>After checking out the repo, run <code>bin/setup</code> to install dependencies. Then, run <code>rake test</code> to run the tests. You can also run <code>bin/console</code> for an interactive prompt that will allow you to experiment.</p>
+<p>To install this gem onto your local machine, run <code>bundle exec rake install</code>. To release a new version, update the version number in <code>version.rb</code>, and then run <code>bundle exec rake release</code>, which will create a git tag for the version, push git commits and the created tag, and push the <code>.gem</code> file to <a href="https://rubygems.org">rubygems.org</a>.</p>
+<h2>Contributing</h2>
+<p>Bug reports and pull requests are welcome on GitHub at https://github.com/creativival/voxelamming_ruby. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the <a href="https://github.com/[USERNAME]/voxelamming_ruby/blob/master/CODE_OF_CONDUCT.md">code of conduct</a>.</p>
+<h2>License</h2>
+<p>The gem is available as open source under the terms of the <a href="https://opensource.org/licenses/MIT">MIT License</a>.</p>
+<h2>Code of Conduct</h2>
+<p>Everyone interacting in the Voxelamming project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the <a href="https://github.com/[USERNAME]/voxelamming_ruby/blob/master/CODE_OF_CONDUCT.md">code of conduct</a>.</p>
+
+
+
+
+
+
+</body>
+</html>
