@@ -40,7 +40,7 @@ module Voxelamming
       @model_moves = []
       @sprites = []
       @sprite_moves = []
-      @game_score = -1
+      @game_score = []
       @game_screen = []  # width, height, angle=90, red=1, green=1, blue=1, alpha=0.5
       @size = 1
       @shape = 'box'
@@ -68,7 +68,7 @@ module Voxelamming
       @sentences = []
       @sprites = []
       @sprite_moves = []
-      @game_score = -1
+      @game_score = []
       @game_screen = []  # width, height, angle=90, red=1, green=1, blue=1, alpha=0.5
       @lights = []
       @commands = []
@@ -325,58 +325,120 @@ module Voxelamming
       @game_screen = [width, height, angle, r, g, b, alpha]
     end
 
-    def set_game_score(score)
-      @game_score = score.to_f
+    def set_game_score(score, x = 0, y = 0)
+      score, x, y = [score, x, y].map(&:to_f)
+      @game_score = [score, x, y]
     end
 
     def send_game_over
       @commands << 'gameOver'
     end
 
+    def send_game_clear
+      @commands << 'gameClear'
+    end
+
     def set_rotation_style(sprite_name, rotation_style = 'all around')
       @rotation_styles[sprite_name] = rotation_style
     end
 
-    def create_sprite(sprite_name, color_list, x, y, direction = 0, scale = 1, visible = true)
-      # 新しいスプライトデータを配列に追加
-      x, y, direction = round_numbers([x, y, direction])
-      x, y, direction, scale = [x, y, direction, scale].map(&:to_s)
-      @sprites << [sprite_name, color_list, x, y, direction, scale, visible ? '1' : '0']
+    # スプライトの作成と表示について、テンプレートとクローンの概念を導入する
+    # テンプレートはボクセルの集合で、標準サイズは8x8に設定する
+    # この概念により、スプライトの複数作成が可能となる（敵キャラや球など）
+    # スプライトは、ボクセラミングアプリ上で、テンプレートとして作成される（isEnable=falseにより表示されない）
+    # スプライトは、テンプレートのクローンとして画面上に表示される
+    # 送信ごとに、クローンはすべて削除されて、新しいクローンが作成される
+    # 上記の仕様により、テンプレートからスプライトを複数作成できる
+
+    # スプライトのテンプレートを作成（スプライトは配置されない）
+    def create_sprite_template(sprite_name, color_list)
+      @sprites << [sprite_name, color_list]
     end
 
-    def move_sprite(sprite_name, x, y, direction = 0, scale = 1, visible = true)
+    # スプライトのテンプレートを使って、複数のスプライトを表示する
+    def display_sprite_template(sprite_name, x, y, direction = 0, scale = 1)
       # x, y, directionを丸める
       x, y, direction = round_numbers([x, y, direction])
       x, y, direction, scale = [x, y, direction, scale].map(&:to_s)
 
       # rotation_styleを取得
-      if @rotation_styles.has_key?(sprite_name)
+      if @rotation_styles[sprite_name]
         rotation_style = @rotation_styles[sprite_name]
 
         # rotation_styleが変更された場合、新しいスプライトデータを配列に追加
-        case rotation_style
-        when 'left-right'
-          direction_mod = direction.to_i % 360 # 常に0から359の範囲で処理（常に正の数になる）
+        if rotation_style == 'left-right'
+          direction_mod = direction.to_i % 360  # 常に0から359の範囲で処理（常に正の数になる）
           if direction_mod > 90 && direction_mod < 270
-            direction = '-180' # -180は左右反転するようにボクセラミング側で実装されている
+            direction = "-180"  # -180は左右反転するようにボクセラミング側で実装されている
           else
-            direction = '0'
+            direction = "0"
           end
-        when "don't rotate"
-          direction = '0'
+        elsif rotation_style == "don't rotate"
+          direction = "0"
         else
           direction = direction.to_s
         end
       else
-        # rotation_styleが設定されていない場合、そのままの値を使う
         direction = direction.to_s
       end
 
-      # sprites配列から同じスプライト名の要素を削除
-      @sprite_moves.reject! { |sprite_info| sprite_info[0] == sprite_name }
+      # sprite_moves 配列から指定されたスプライト名の情報を検索
+      matching_sprites = @sprite_moves.select { |info| info[0] == sprite_name }
 
-      # 新しいスプライトデータを配列に追加
-      @sprite_moves << [sprite_name, x, y, direction, scale, visible ? '1' : '0']
+      # スプライトの移動データを保存または更新
+      if matching_sprites.empty?
+        @sprite_moves.push([sprite_name, x, y, direction, scale])
+      else
+        index = @sprite_moves.index(matching_sprites[0])
+        @sprite_moves[index] += [x, y, direction, scale]
+      end
+    end
+
+    # 通常のスプライトの作成
+    def create_sprite(sprite_name, color_list, x = 0, y = 0, direction = 0, scale = 1, visible = true)
+      # スプライトのテンプレートデータを配列に追加
+      create_sprite_template(sprite_name, color_list)
+
+      # スプライトの移動データを配列に追加
+      if visible || !(x == 0 && y == 0 && direction == 0 && scale == 1)
+        x, y, direction = round_numbers([x, y, direction])
+        x, y, direction, scale = [x, y, direction, scale].map(&:to_s)
+        @sprite_moves.push([sprite_name, x, y, direction, scale])
+      end
+    end
+
+    # 通常のスプライトの移動
+    def move_sprite(sprite_name, x, y, direction = 0, scale = 1, visible = true)
+      if visible
+        display_sprite_template(sprite_name, x, y, direction, scale)
+      end
+    end
+
+    # スプライトクローンの移動
+    def move_sprite_clone(sprite_name, x, y, direction = 0, scale = 1)
+      display_sprite_template(sprite_name, x, y, direction, scale)
+    end
+
+    # ドット（弾）を表示する
+    def display_dot(x, y, direction = 0, color_id = 10, width = 1, height = 1)
+      template_name = "dot_#{color_id}_#{width}_#{height}"
+      display_sprite_template(template_name, x, y, direction, 1)
+    end
+
+    # テキストを表示する
+    def display_text(text, x, y, direction = 0, scale = 1, color_id = 7, is_vertical = false, align = '')
+      text_format = ''
+      align = align.downcase  # 破壊的メソッドの代わりに非破壊的メソッドを使用
+
+      text_format += 't' if align.include?('top')
+      text_format += 'b' if align.include?('bottom')
+      text_format += 'l' if align.include?('left')
+      text_format += 'r' if align.include?('right')
+
+      text_format += is_vertical ? 'v' : 'h'
+
+      template_name = "text_#{text}_#{color_id}_#{text_format}"
+      display_sprite_template(template_name, x, y, direction, scale)
     end
 
     def send_data(name: '')
